@@ -20,24 +20,38 @@ traduções pt-BR que faltam nesta instalação.
   corrige strings que não traduzem por falta do arquivo `elementor-pro-pt_BR.mo` nesta
   instalação (ou incompatibilidade de versão do `.po`/`.mo` do WooCommerce).
 
-## O que este plugin **não** inclui
+## Design do checkout (layout Elementor) via shortcode
 
-O layout visual do checkout (cores, cards, grid desktop/mobile, textos das seções) foi
-feito inteiramente dentro do **Elementor Pro**, usando o widget nativo
-`woocommerce-checkout-page`, e vive como dado de página (`_elementor_data`) no banco —
-não é código de plugin. Para levar esse design para outro site:
+O layout visual do checkout (cores, cards, grid desktop/mobile, textos das seções,
+widget `woocommerce-checkout-page` do Elementor Pro) vai junto com o plugin: um export
+do design fica em `templates/checkout-elementor-data.json`.
 
-1. Na página de checkout, abra o Elementor e use **"Salvar como Modelo"** (ou exporte o
-   template via **Templates → Salvar Tudo Como Modelo**).
-2. No site de destino, importe esse modelo em **Templates → Importar Modelos** e
-   aplique-o na página de checkout.
+Na ativação do plugin (`register_activation_hook`), esse JSON é copiado para um
+template interno do Elementor (`elementor_library`), e o shortcode **`[wi_checkout]`**
+passa a renderizar esse template onde for colocado.
+
+**Para aplicar em uma página:** edite a página que o WooCommerce usa como Checkout
+(**WooCommerce → Configurações → Avançado → Páginas**) e defina o conteúdo dela como
+`[wi_checkout]` — pode ser em um bloco de Shortcode do Gutenberg, no editor clássico,
+ou no widget "Shortcode" do próprio Elementor.
+
+> **Atenção:** o shortcode reproduz o layout visual em qualquer página, mas a lógica de
+> checkout do WooCommerce (criar pedido, redirecionar para "pedido recebido", sessão)
+> só funciona de verdade na página que o WooCommerce tem configurada como a página de
+> Checkout. Colocar `[wi_checkout]` em outra página só mostra o design, sem processar
+> pagamento de verdade.
+
+Se o template interno precisar ser recriado manualmente (ex.: depois de editar o JSON
+à mão), chame `wi_checkout_create_template()` uma vez (via um snippet ou WP-CLI
+`wp eval`).
 
 ## Instalação
 
 1. Copie a pasta `wi-checkout-customizations` inteira para `wp-content/plugins/`.
 2. Ative o plugin em **Plugins** no wp-admin.
-3. Confirme que o WooCommerce e o Elementor Pro (com o widget de checkout configurado)
-   já estão ativos — este plugin só ajusta o comportamento do checkout, não o substitui.
+3. Confirme que o WooCommerce e o Elementor Pro já estão ativos — este plugin só
+   ajusta o comportamento do checkout, não os substitui.
+4. Defina o conteúdo da página de Checkout como `[wi_checkout]` (veja acima).
 
 ## Requisitos
 
