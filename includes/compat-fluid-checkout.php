@@ -20,3 +20,28 @@ add_filter( 'fc_enable_checkout_page_template', function ( $is_enabled ) {
 
 	return $is_enabled;
 }, 100 );
+
+/**
+ * Belt-and-suspenders fallback: some Fluid Checkout versions/editions still
+ * pick their own checkout template even when the filter above says not to
+ * (the exact cooperation logic has changed across releases). This runs after
+ * every other `template_include` filter (including Fluid Checkout's own, at
+ * priority 100) and forces the theme's normal page template back whenever
+ * the resolved template is specifically Fluid Checkout's checkout template —
+ * so `[wi_checkout]` renders through the normal WordPress content loop again.
+ */
+add_filter( 'template_include', function ( $template ) {
+	if ( ! function_exists( 'is_checkout' ) || ! is_checkout() ) {
+		return $template;
+	}
+
+	$is_fluid_checkout_template = false !== strpos( str_replace( '\\', '/', $template ), 'checkout/page-checkout.php' );
+
+	if ( ! $is_fluid_checkout_template ) {
+		return $template;
+	}
+
+	$fallback = locate_template( array( 'page.php', 'singular.php', 'index.php' ) );
+
+	return $fallback ? $fallback : $template;
+}, PHP_INT_MAX );
