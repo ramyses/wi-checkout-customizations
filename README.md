@@ -45,6 +45,20 @@ Se o template interno precisar ser recriado manualmente (ex.: depois de editar o
 à mão), chame `wi_checkout_create_template()` uma vez (via um snippet ou WP-CLI
 `wp eval`).
 
+## Compatibilidade com o plugin "Fluid Checkout"
+
+Se o site tiver o plugin **Fluid Checkout for WooCommerce** ativo, ele substitui a
+página inteira de checkout pelo layout multi-etapas próprio dele (a tela "Passo 1 de
+4"), por cima de qualquer coisa que esteja no conteúdo da página — inclusive o
+`[wi_checkout]`.
+
+Em vez de desativar o Fluid Checkout (ele também pode afetar outras páginas, como o
+carrinho), **`includes/compat-fluid-checkout.php`** usa o filtro que o próprio Fluid
+Checkout documenta para compatibilidade com page builders
+(`fc_enable_checkout_page_template`) para desligar só a substituição da página de
+checkout, mantendo o resto do plugin funcionando normalmente. Não faz nada se o Fluid
+Checkout não estiver instalado.
+
 ## Instalação
 
 1. Copie a pasta `wi-checkout-customizations` inteira para `wp-content/plugins/`.
