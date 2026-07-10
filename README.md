@@ -72,3 +72,11 @@ Checkout não estiver instalado.
 - WordPress + WooCommerce
 - Elementor Pro com o checkout montado via widget `woocommerce-checkout-page`
 - jQuery (já vem com o WordPress/WooCommerce)
+
+## Convenções de segurança para código novo
+
+- PHP: use `esc_html()`/`esc_attr()`/`esc_url()`/`wp_kses()` em qualquer
+  saída dinâmica que não seja uma constante fixa do próprio código.
+- JS: prefira `textContent`/`createElement` a `innerHTML` sempre que o
+  conteúdo vier do DOM ou de qualquer fonte que não seja um literal fixo no
+  próprio script.

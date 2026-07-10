@@ -60,6 +60,21 @@
 		return el;
 	}
 
+	// Builds one "<span>Label: <strong>value</strong></span>" block via DOM APIs
+	// (no innerHTML/string concatenation) so text read from the totals table can
+	// never be interpreted as markup, even though the source is trusted today.
+	function appendSummaryPart( el, label, value, color ) {
+		var span = document.createElement( 'span' );
+		if ( color ) {
+			span.style.color = color;
+		}
+		span.appendChild( document.createTextNode( label + ': ' ) );
+		var strong = document.createElement( 'strong' );
+		strong.textContent = value;
+		span.appendChild( strong );
+		el.appendChild( span );
+	}
+
 	function updateSummary() {
 		var el = ensureSummaryEl();
 		if ( ! el ) {
@@ -71,13 +86,14 @@
 		var fee      = cellText( 'tr.fee td' );
 		var total    = cellText( '.order-total td' );
 
-		var parts = [];
-		if ( subtotal ) { parts.push( '<span>Valor: <strong>' + subtotal + '</strong></span>' ); }
-		if ( shipping ) { parts.push( '<span>Frete: <strong>' + shipping + '</strong></span>' ); }
-		if ( fee )      { parts.push( '<span>Taxa/Desconto: <strong>' + fee + '</strong></span>' ); }
-		if ( total )    { parts.push( '<span style="color:#6D3CF2;">Total: <strong>' + total + '</strong></span>' ); }
+		while ( el.firstChild ) {
+			el.removeChild( el.firstChild );
+		}
 
-		el.innerHTML = parts.join( '' );
+		if ( subtotal ) { appendSummaryPart( el, 'Valor', subtotal ); }
+		if ( shipping ) { appendSummaryPart( el, 'Frete', shipping ); }
+		if ( fee )      { appendSummaryPart( el, 'Taxa/Desconto', fee ); }
+		if ( total )    { appendSummaryPart( el, 'Total', total, '#6D3CF2' ); }
 	}
 
 	function init() {
