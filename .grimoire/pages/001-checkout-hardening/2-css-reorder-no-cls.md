@@ -1,5 +1,20 @@
 # Step 2 — Eliminar o CLS: reorder do checkout via CSS em vez de JS
 
+> **REVERTIDO (commit `1107b69`, revertendo `76d84bf`).** Depois de executado e
+> commitado, uma verificação visual local revelou que
+> `templates/checkout-elementor-data.json` já carrega, no `custom_css` do
+> próprio widget (id `bd9deff`), um comentário histórico explícito: uma
+> tentativa anterior já usou `display:contents` (exatamente esta abordagem) e
+> quebrou o widget de preço/desconto do Mercado Pago nas caixas de pagamento,
+> que depende de layout de caixa normal para se medir. Por isso o design
+> vigente reparenta os blocos via JS de propósito, não por descuido. Este step
+> foi revertido para restaurar o reorder via JS; o CLS que ele tentava
+> resolver continua sendo uma limitação conhecida e não resolvida. Ver memória
+> `elementor-template-custom-css-history` para o achado completo. Uma correção
+> real do CLS exigiria reestruturar o JSON do template para que os blocos já
+> nasçam como filhos diretos de `.e-checkout__container` (não reparentar nem
+> achatar em runtime) — não tentado aqui.
+
 ## Context
 Segundo passo da página 001 (ver `SPEC.md`). O `reorderCheckout()` atual em
 `assets/js/wi-checkout.js` move os blocos do checkout no DOM depois do
