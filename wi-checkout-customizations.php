@@ -5,6 +5,7 @@
  * Version: 1.0.2
  * Author: Web Import Brasil
  * Text Domain: wi-checkout-customizations
+ * Requires Plugins: woocommerce, elementor-pro
  */
 
 defined( 'ABSPATH' ) || exit;

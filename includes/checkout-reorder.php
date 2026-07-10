@@ -17,18 +17,30 @@ add_action( 'wp_enqueue_scripts', function () {
 		return;
 	}
 
-	wp_enqueue_script(
-		'wi-checkout',
-		WI_CHECKOUT_URL . 'assets/js/wi-checkout.js',
-		array( 'jquery' ),
-		filemtime( WI_CHECKOUT_DIR . 'assets/js/wi-checkout.js' ),
-		true
-	);
+	$script_path = WI_CHECKOUT_DIR . 'assets/js/wi-checkout.js';
 
-	wp_enqueue_style(
-		'wi-checkout-thumb',
-		WI_CHECKOUT_URL . 'assets/css/wi-checkout-thumb.css',
-		array(),
-		filemtime( WI_CHECKOUT_DIR . 'assets/css/wi-checkout-thumb.css' )
-	);
+	if ( file_exists( $script_path ) ) {
+		wp_enqueue_script(
+			'wi-checkout',
+			WI_CHECKOUT_URL . 'assets/js/wi-checkout.js',
+			array( 'jquery' ),
+			filemtime( $script_path ),
+			true
+		);
+	} else {
+		error_log( 'WI Checkout: asset ausente: ' . $script_path );
+	}
+
+	$style_path = WI_CHECKOUT_DIR . 'assets/css/wi-checkout-thumb.css';
+
+	if ( file_exists( $style_path ) ) {
+		wp_enqueue_style(
+			'wi-checkout-thumb',
+			WI_CHECKOUT_URL . 'assets/css/wi-checkout-thumb.css',
+			array(),
+			filemtime( $style_path )
+		);
+	} else {
+		error_log( 'WI Checkout: asset ausente: ' . $style_path );
+	}
 } );
