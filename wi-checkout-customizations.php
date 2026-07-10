@@ -16,5 +16,6 @@ require_once WI_CHECKOUT_DIR . 'includes/checkout-reorder.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-i18n.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-shortcode.php';
 require_once WI_CHECKOUT_DIR . 'includes/compat-fluid-checkout.php';
+require_once WI_CHECKOUT_DIR . 'includes/checkout-thumbnail.php';
 
 register_activation_hook( __FILE__, 'wi_checkout_create_template' );

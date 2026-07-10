@@ -1,0 +1,12 @@
+.woocommerce-checkout-review-order-table .product-name {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.wi-checkout-thumb {
+	width: 48px;
+	height: 48px;
+	border-radius: 6px;
+	flex-shrink: 0;
+	object-fit: cover;
+}

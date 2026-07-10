@@ -24,4 +24,11 @@ add_action( 'wp_enqueue_scripts', function () {
 		filemtime( WI_CHECKOUT_DIR . 'assets/js/wi-checkout.js' ),
 		true
 	);
+
+	wp_enqueue_style(
+		'wi-checkout-thumb',
+		WI_CHECKOUT_URL . 'assets/css/wi-checkout-thumb.css',
+		array(),
+		filemtime( WI_CHECKOUT_DIR . 'assets/css/wi-checkout-thumb.css' )
+	);
 } );
