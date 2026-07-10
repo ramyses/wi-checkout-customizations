@@ -2,34 +2,24 @@
 	'use strict';
 
 	function reorderCheckout() {
-		var container   = document.querySelector( '.e-checkout__container' );
+		// Block order (Produtos / Informações / Cupom / Pagamento) is handled by CSS
+		// (assets/css/wi-checkout-reorder.css) via `order` on the flattened grid items —
+		// no DOM reparenting for position anymore, so there's no post-paint layout shift.
 		var informacoes = document.querySelector( '.e-checkout__column-start' );
-		var produtos    = document.querySelector( '.e-checkout__order_review' );
-		var pagamento   = document.querySelector( '.e-checkout__order_review-2' );
-		var couponBox   = document.querySelector( '.e-coupon-box' );
 
-		if ( ! container || ! informacoes || ! produtos || ! pagamento ) {
+		if ( ! informacoes ) {
 			return;
 		}
 
 		// "Criar uma conta?" (.woocommerce-account-fields) sits right after the billing
 		// fields but OUTSIDE the "Seus dados" white card — move it inside so it stops
-		// floating on the plain background.
+		// floating on the plain background. This is a real DOM restructure (not just
+		// visual order), so it stays in JS.
 		var billingFields = informacoes.querySelector( '.woocommerce-billing-fields' );
 		var accountFields = informacoes.querySelector( '.woocommerce-account-fields' );
 		if ( billingFields && accountFields ) {
 			billingFields.appendChild( accountFields );
 		}
-
-		container.appendChild( produtos );
-		container.appendChild( informacoes );
-		// The coupon box lives nested inside "Produtos" by default (right after the
-		// totals table) — pulled out here into its own block, positioned right before
-		// "Pagamento" instead of squeezed inside the products card.
-		if ( couponBox ) {
-			container.appendChild( couponBox );
-		}
-		container.appendChild( pagamento );
 	}
 
 	if ( document.readyState === 'loading' ) {

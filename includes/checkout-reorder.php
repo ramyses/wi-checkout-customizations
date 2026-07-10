@@ -43,4 +43,17 @@ add_action( 'wp_enqueue_scripts', function () {
 	} else {
 		error_log( 'WI Checkout: asset ausente: ' . $style_path );
 	}
+
+	$reorder_style_path = WI_CHECKOUT_DIR . 'assets/css/wi-checkout-reorder.css';
+
+	if ( file_exists( $reorder_style_path ) ) {
+		wp_enqueue_style(
+			'wi-checkout-reorder',
+			WI_CHECKOUT_URL . 'assets/css/wi-checkout-reorder.css',
+			array(),
+			filemtime( $reorder_style_path )
+		);
+	} else {
+		error_log( 'WI Checkout: asset ausente: ' . $reorder_style_path );
+	}
 } );
