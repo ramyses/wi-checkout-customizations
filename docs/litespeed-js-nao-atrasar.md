@@ -1,20 +1,28 @@
 # Scripts que não podem ser atrasados/combinados fora de ordem pelo LiteSpeed Cache
 
-Lista de referência para configurar **LiteSpeed Cache → Otimização de Página → Configurações de JS** (campos "Excluir JS Combinado", "Excluir Adiamento de JS" e "Incluir Atraso de Execução de JS"). Levantada em 08/07/2026 checando o código-fonte dos plugins e as configurações atuais do LiteSpeed no banco.
+Lista de referência para configurar **LiteSpeed Cache → Otimização de Página → Configurações de JS** (campos "Excluir JS Combinado", "Excluir Adiamento de JS" e "Incluir Atraso de Execução de JS"). Levantada em 08/07/2026 checando o código-fonte dos plugins e as configurações atuais do LiteSpeed no banco. **Atualizado em 10/07/2026** para incluir o script de Device ID do Mercado Pago (ver seção abaixo).
 
-## Estado atual (já configurado, confirmado no banco)
+## Estado atual (já configurado, confirmado no banco em 10/07/2026)
 Já excluídos de **Combinar JS** (`litespeed.conf.optm-js_exc`):
 - `jquery.min.js`, `jquery.js`
 - `woocommerce_params` (dados localizados que o checkout.js do WooCommerce precisa pra funcionar)
 - `order-attribution`
+- `wi-checkout.js` (script próprio de reordenação dos blocos do checkout)
 
 Já excluídos de **Adiar JS** (`litespeed.conf.optm-js_defer_exc`):
 - `jquery.min.js`, `jquery.js`, `gtm.js`, `analytics.js`
 
-**Atraso de Execução de JS** (`litespeed.conf.optm-js_delay_inc`) está **vazio hoje** — ou seja, esse recurso não está atrasando nenhum script no momento. Se for ativado no futuro, os itens abaixo precisam entrar na lista de exclusão dele também.
+Os scripts `mp-*`/SDK do Mercado Pago listados na seção abaixo **ainda não estão** em nenhuma dessas duas listas de exclusão (nem `optm-js_exc` nem `optm-js_defer_exc`) — só o script de Device ID (`session.min.js`) foi adicionado a ambas, no ambiente local de teste, como parte do hardening desta página. Replicar em produção via wp-admin continua pendente (ver seção "Device ID" abaixo).
+
+**Atraso de Execução de JS** (`litespeed.conf.optm-js_delay`) está **desativado hoje** (`optm-js_delay_inc` vazio) — ou seja, esse recurso não está atrasando nenhum script no momento. Se for ativado no futuro, os itens abaixo (incluindo o Device ID) precisam entrar na lista de exclusão dele também.
 
 ## Scripts do Mercado Pago que precisam ser adicionados às exclusões (checkout)
 Carregados só na página de checkout (`is_checkout()`), essenciais pro Pix/Cartão/Boleto funcionarem:
+
+**Device ID (fingerprint antifraude) — já protegido no ambiente local, replicar em produção:**
+- `session.min.js` (handle `wc_mercadopago_security_session`), enfileirado pelo plugin oficial `woocommerce-mercadopago`. É o script que injeta `https://www.mercadopago.com/v2/security.js` e popula `MP_DEVICE_SESSION_ID`, o Device ID que o Mercado Pago usa para reduzir recusa/fraude em toda venda (ver `.grimoire/pages/002-checkout-antifraude-mercadopago/SPEC.md`). Se o LiteSpeed combinar ou atrasar esse script, o Device ID pode parar de ser coletado silenciosamente — sem erro visível, só um sinal antifraude a menos.
+- `https://www.mercadopago.com/v2/security.js` — script externo injetado pelo `session.min.js` acima; mesma justificativa, nunca deve ser combinado/adiado.
+- **Confirmado em 10/07/2026** no ambiente local (`c:\xampp\htdocs\public_html`): adicionado `session.min.js` a `litespeed.conf.optm-js_exc` e a `litespeed.conf.optm-js_defer_exc` via `update_option()` (bootstrap `wp-load.php`, mesmo mecanismo usado na investigação). Após a mudança, a página de checkout local continua servindo `wc_mercadopago_security_session-js` como arquivo próprio (não combinado), sem novos erros/warnings em `wp-content/debug.log`. **Em produção, essa mesma exclusão ainda precisa ser aplicada manualmente no wp-admin** (LiteSpeed Cache → Otimização de Página → Configurações de JS) — não está versionada neste repositório.
 
 **Comuns a todos os métodos:**
 - `mp-checkout-error-dispatcher.js`
