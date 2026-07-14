@@ -44,3 +44,27 @@ add_action( 'wp_enqueue_scripts', function () {
 		error_log( 'WI Checkout: asset ausente: ' . $style_path );
 	}
 } );
+
+/**
+ * Forces Pix (woo-mercado-pago-pix) to the front of the available payment
+ * gateways on the checkout page. WooCommerce lists gateways, and pre-selects
+ * the payment method radio, in the order returned by this filter — so moving
+ * Pix first here makes it both display first and be selected by default
+ * (unless the customer already chose a different gateway earlier in this
+ * session). Done in code, not via wp-admin's drag-and-drop gateway order,
+ * because that setting has been observed to differ between environments and
+ * can be changed/reset independently of this plugin.
+ */
+add_filter( 'woocommerce_available_payment_gateways', function ( $gateways ) {
+	if ( ! is_checkout() ) {
+		return $gateways;
+	}
+
+	$pix_id = 'woo-mercado-pago-pix';
+
+	if ( isset( $gateways[ $pix_id ] ) ) {
+		$gateways = array( $pix_id => $gateways[ $pix_id ] ) + $gateways;
+	}
+
+	return $gateways;
+} );
