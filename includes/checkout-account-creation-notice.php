@@ -15,7 +15,7 @@ function wi_render_account_creation_notice(): void {
 		return;
 	}
 	?>
-	<div class="wi-account-creation-notice" role="note">
+	<div class="wi-account-creation-notice" role="note" style="margin:0 0 16px;padding:10px 12px;background:#EEF4FF;border:1px solid #C7DBFF;border-radius:8px;color:#1F3A66;font-size:13.5px;line-height:1.5;">
 		Uma conta será criada automaticamente com o e-mail informado abaixo.
 		Você vai receber a senha de acesso por e-mail para acompanhar seus
 		pedidos depois.
