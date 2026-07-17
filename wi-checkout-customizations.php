@@ -20,6 +20,5 @@ require_once WI_CHECKOUT_DIR . 'includes/compat-fluid-checkout.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-thumbnail.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-mercadopago-fixes.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-account-creation-notice.php';
-require_once WI_CHECKOUT_DIR . 'includes/checkout-existing-email-login.php';
 
 register_activation_hook( __FILE__, 'wi_checkout_create_template' );

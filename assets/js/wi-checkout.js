@@ -191,165 +191,38 @@
 (function () {
 	'use strict';
 
-	// Guest checkout is off (Page 012), so an e-mail that already has an account
-	// would otherwise only surface WooCommerce's generic error after clicking
-	// Place Order, throwing away the whole form. This checks the e-mail on blur
-	// and, if it matches an account, reveals a password field right there —
-	// logging in over AJAX (wi_checkout_email_login, includes/checkout-existing-email-login.php)
-	// without leaving checkout. wiCheckoutEmailLogin (ajaxUrl/nonce) is only
-	// localized for logged-out visitors on the checkout page, so this script
-	// is a silent no-op for anyone already logged in.
+	// Guest checkout is off (Page 012) — every guest arriving at checkout needs
+	// to log in or create an account. WooCommerce's own login form is already
+	// there (`woocommerce_enable_checkout_login_reminder` is on), but it starts
+	// collapsed behind a "Já tem uma conta? Faça login" link (inline
+	// `style="display:none"` on `.woocommerce-form-login`, toggled by core's
+	// own `.showlogin` click handler). Simulating that same click on page load
+	// expands it immediately instead of leaving it hidden — reuses WooCommerce's
+	// own toggle logic/animation rather than fighting its inline style directly.
 
-	if ( typeof window.wiCheckoutEmailLogin === 'undefined' ) {
-		return;
-	}
-
-	var CONFIG = window.wiCheckoutEmailLogin;
-	var BOX_ID = 'wi-existing-email-login';
-	var lastCheckedEmail = '';
-
-	function ajaxPost( action, data ) {
-		var body = new FormData();
-		body.append( 'action', action );
-		body.append( 'nonce', CONFIG.nonce );
-		for ( var key in data ) {
-			if ( Object.prototype.hasOwnProperty.call( data, key ) ) {
-				body.append( key, data[ key ] );
-			}
-		}
-		return fetch( CONFIG.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: body } )
-			.then( function ( r ) { return r.json(); } );
-	}
-
-	function removeBox() {
-		var existing = document.getElementById( BOX_ID );
-		if ( existing ) {
-			existing.parentNode.removeChild( existing );
-		}
-	}
-
-	function showLoginBox( email, emailField ) {
-		removeBox();
-
-		var box = document.createElement( 'div' );
-		box.id = BOX_ID;
-		box.style.cssText = 'margin:8px 0 16px;padding:12px;background:#FFFFFF;'
-			+ 'border:1px solid #C7DBFF;border-radius:8px;';
-
-		var label = document.createElement( 'p' );
-		label.style.cssText = 'margin:0 0 8px;font-size:13.5px;color:#1F3A66;';
-		label.textContent = 'Já existe uma conta com este e-mail. Digite sua senha para continuar:';
-		box.appendChild( label );
-
-		var row = document.createElement( 'div' );
-		row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
-
-		var passwordInput = document.createElement( 'input' );
-		passwordInput.type = 'password';
-		passwordInput.placeholder = 'Sua senha';
-		passwordInput.autocomplete = 'current-password';
-		passwordInput.style.cssText = 'flex:1;min-width:160px;padding:8px 10px;'
-			+ 'border:1px solid #C7DBFF;border-radius:6px;';
-		row.appendChild( passwordInput );
-
-		var loginButton = document.createElement( 'button' );
-		loginButton.type = 'button';
-		loginButton.textContent = 'Entrar';
-		loginButton.style.cssText = 'padding:8px 16px;background:#1F3A66;color:#fff;'
-			+ 'border:none;border-radius:6px;cursor:pointer;';
-		row.appendChild( loginButton );
-
-		box.appendChild( row );
-
-		var errorMsg = document.createElement ( 'p' );
-		errorMsg.style.cssText = 'margin:8px 0 0;font-size:12.5px;color:#B3261E;display:none;';
-		box.appendChild( errorMsg );
-
-		function attemptLogin() {
-			errorMsg.style.display = 'none';
-			loginButton.disabled = true;
-			loginButton.textContent = 'Entrando...';
-
-			ajaxPost( 'wi_checkout_email_login', { email: email, password: passwordInput.value } )
-				.then( function ( res ) {
-					if ( res && res.success ) {
-						if ( window.jQuery ) {
-							jQuery( document.body ).trigger( 'update_checkout' );
-						}
-						location.reload();
-						return;
-					}
-					loginButton.disabled = false;
-					loginButton.textContent = 'Entrar';
-					errorMsg.textContent = ( res && res.data && res.data.message ) || 'Não foi possível entrar.';
-					errorMsg.style.display = 'block';
-				} )
-				.catch( function () {
-					loginButton.disabled = false;
-					loginButton.textContent = 'Entrar';
-					errorMsg.textContent = 'Erro de conexão. Tente novamente.';
-					errorMsg.style.display = 'block';
-				} );
-		}
-
-		loginButton.addEventListener( 'click', attemptLogin );
-		passwordInput.addEventListener( 'keydown', function ( e ) {
-			if ( e.key === 'Enter' ) {
-				e.preventDefault();
-				attemptLogin();
-			}
-		} );
-
-		emailField.insertAdjacentElement( 'afterend', box );
-		passwordInput.focus();
-	}
-
-	function checkEmail( emailField ) {
-		var email = emailField.value.trim();
-
-		if ( email === lastCheckedEmail ) {
+	function expandLoginForm() {
+		if ( ! window.jQuery ) {
 			return;
 		}
-		lastCheckedEmail = email;
-
-		if ( ! email || email.indexOf( '@' ) === -1 ) {
-			removeBox();
-			return;
+		var toggleLink = jQuery( '.woocommerce-form-login-toggle .showlogin' );
+		var form = jQuery( '.woocommerce-form-login' );
+		if ( toggleLink.length && form.length && form.is( ':hidden' ) ) {
+			toggleLink.trigger( 'click' );
 		}
-
-		ajaxPost( 'wi_checkout_email_exists', { email: email } )
-			.then( function ( res ) {
-				if ( emailField.value.trim() !== email ) {
-					return; // user kept typing; a newer check will follow
-				}
-				if ( res && res.success && res.data && res.data.exists ) {
-					showLoginBox( email, emailField );
-				} else {
-					removeBox();
-				}
-			} )
-			.catch( function () {
-				// Silent fail — this is a UX nicety, not a security gate.
-			} );
 	}
 
-	function bind() {
-		var emailField = document.getElementById( 'billing_email' );
-		if ( ! emailField || emailField.dataset.wiEmailLoginBound === 'yes' ) {
-			return;
+	function init() {
+		expandLoginForm();
+		if ( window.jQuery ) {
+			// Re-run after checkout AJAX refreshes (e.g. CEP lookup) in case
+			// WooCommerce re-renders the login block collapsed again.
+			jQuery( document.body ).on( 'updated_checkout', expandLoginForm );
 		}
-		emailField.dataset.wiEmailLoginBound = 'yes';
-		emailField.addEventListener( 'blur', function () {
-			checkEmail( emailField );
-		} );
 	}
 
 	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', bind );
+		document.addEventListener( 'DOMContentLoaded', init );
 	} else {
-		bind();
-	}
-	if ( window.jQuery ) {
-		jQuery( document.body ).on( 'updated_checkout', bind );
+		init();
 	}
 })();
