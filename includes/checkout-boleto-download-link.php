@@ -34,3 +34,18 @@ function wi_render_boleto_download_link( $order_id ): void {
 	<?php
 }
 add_action( 'woocommerce_thankyou_interboleto', 'wi_render_boleto_download_link', 20 );
+
+/**
+ * Overrides the generic "Thank you. Your order has been received." heading
+ * for boleto orders specifically — WooCommerce's native filter for this
+ * exact purpose, already receives the order so it can be scoped without
+ * touching any template file. Every other payment method keeps the
+ * original text untouched.
+ */
+function wi_boleto_thankyou_text( $text, $order ) {
+	if ( $order && 'interboleto' === $order->get_payment_method() ) {
+		return 'Pedido recebido! Para concluir sua compra, pague o boleto abaixo até a data de vencimento. Assim que o pagamento for confirmado, seu pedido será processado.';
+	}
+	return $text;
+}
+add_filter( 'woocommerce_thankyou_order_received_text', 'wi_boleto_thankyou_text', 10, 2 );
