@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WI Checkout Customizations
  * Description: Reordena os blocos do checkout (Produtos/Informações/Pagamento), adiciona um resumo de valores por forma de pagamento, agrupa o frete em uma caixa expansível e corrige traduções pt-BR ausentes. Feito sob medida para o checkout Elementor Pro + WooCommerce da Web Import Brasil.
- * Version: 1.7.0
+ * Version: 1.8.0
  * Author: Web Import Brasil
  * Text Domain: wi-checkout-customizations
  * Requires Plugins: woocommerce, elementor-pro
@@ -20,5 +20,6 @@ require_once WI_CHECKOUT_DIR . 'includes/compat-fluid-checkout.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-thumbnail.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-mercadopago-fixes.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-account-creation-notice.php';
+require_once WI_CHECKOUT_DIR . 'includes/checkout-boleto-download-link.php';
 
 register_activation_hook( __FILE__, 'wi_checkout_create_template' );
