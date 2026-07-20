@@ -1,0 +1,116 @@
+/**
+ * Popup de lembrete de abandono no checkout — modal simples, centralizado,
+ * com overlay. Namespace próprio (.wi-abandon-popup*), sem depender de
+ * nenhuma classe/componente de popup do Woodmart, de propósito: este
+ * projeto já teve incompatibilidade documentada entre o Combine CSS/JS do
+ * LiteSpeed e o Woodmart, então este estilo fica totalmente isolado.
+ */
+
+.wi-abandon-popup {
+	display: none;
+	position: fixed;
+	inset: 0;
+	z-index: 999999;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	box-sizing: border-box;
+}
+
+.wi-abandon-popup.wi-abandon-popup--visible {
+	display: flex;
+}
+
+.wi-abandon-popup__overlay {
+	position: absolute;
+	inset: 0;
+	background: rgba( 0, 0, 0, 0.55 );
+}
+
+.wi-abandon-popup__box {
+	position: relative;
+	background: #ffffff;
+	border-radius: 10px;
+	max-width: 420px;
+	width: 100%;
+	padding: 28px 24px 24px;
+	box-shadow: 0 12px 40px rgba( 0, 0, 0, 0.25 );
+	text-align: center;
+	box-sizing: border-box;
+}
+
+.wi-abandon-popup__close {
+	position: absolute;
+	top: 8px;
+	right: 10px;
+	background: none;
+	border: none;
+	font-size: 26px;
+	line-height: 1;
+	cursor: pointer;
+	color: #666666;
+	padding: 6px;
+}
+
+.wi-abandon-popup__close:hover {
+	color: #111111;
+}
+
+.wi-abandon-popup__title {
+	margin: 0 0 12px;
+	font-size: 19px;
+	font-weight: 700;
+	color: #1a1a1a;
+}
+
+.wi-abandon-popup__body {
+	margin: 0 0 20px;
+	font-size: 14.5px;
+	line-height: 1.5;
+	color: #444444;
+}
+
+.wi-abandon-popup__actions {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.wi-abandon-popup__btn {
+	display: block;
+	width: 100%;
+	padding: 12px 16px;
+	border-radius: 6px;
+	font-size: 14.5px;
+	font-weight: 600;
+	cursor: pointer;
+	border: 1px solid transparent;
+	box-sizing: border-box;
+}
+
+.wi-abandon-popup__btn--primary {
+	background: #1a1a1a;
+	color: #ffffff;
+	border-color: #1a1a1a;
+}
+
+.wi-abandon-popup__btn--primary:hover {
+	background: #333333;
+}
+
+.wi-abandon-popup__btn--secondary {
+	background: transparent;
+	color: #666666;
+	font-weight: 500;
+	text-decoration: underline;
+}
+
+.wi-abandon-popup__btn--secondary:hover {
+	color: #333333;
+}
+
+@media ( max-width: 480px ) {
+	.wi-abandon-popup__box {
+		padding: 24px 18px 20px;
+	}
+}

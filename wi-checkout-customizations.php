@@ -24,5 +24,6 @@ require_once WI_CHECKOUT_DIR . 'includes/checkout-mercadopago-fixes.php';
 // woocommerce_enable_guest_checkout=no se a exigencia voltar.
 // require_once WI_CHECKOUT_DIR . 'includes/checkout-account-creation-notice.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-boleto-download-link.php';
+require_once WI_CHECKOUT_DIR . 'includes/checkout-abandonment-popup.php';
 
 register_activation_hook( __FILE__, 'wi_checkout_create_template' );
