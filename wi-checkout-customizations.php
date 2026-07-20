@@ -19,5 +19,9 @@ require_once WI_CHECKOUT_DIR . 'includes/checkout-shortcode.php';
 require_once WI_CHECKOUT_DIR . 'includes/compat-fluid-checkout.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-thumbnail.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-mercadopago-fixes.php';
+// TEMPORARIAMENTE DESATIVADO 2026-07-20: conta deixou de ser obrigatoria
+// (36h sem vendas apos Pages 011/012). Reativar junto com
+// woocommerce_enable_guest_checkout=no se a exigencia voltar.
+// require_once WI_CHECKOUT_DIR . 'includes/checkout-account-creation-notice.php';
 
 register_activation_hook( __FILE__, 'wi_checkout_create_template' );
