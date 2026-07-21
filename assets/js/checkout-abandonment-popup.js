@@ -14,6 +14,14 @@
  *   ainda. "Sair mesmo assim" navega de fato: liga uma flag interna que
  *   deixa o próximo popstate passar direto (sem reinterceptar) e chama
  *   history.back().
+ * - Gatilho de clique em link: intercepta clique em qualquer `<a href>` da
+ *   página (delegação no document, fase de bubble) enquanto o cliente já
+ *   interagiu e o popup ainda não apareceu nesta sessão. Ignora links vazios,
+ *   `#`, `javascript:`, `mailto:`, `tel:`, com `target="_blank"` ou dentro do
+ *   próprio popup. Se nenhuma dessas exceções se aplica, cancela a navegação
+ *   (preventDefault), guarda o href pendente e mostra o popup. "Sair mesmo
+ *   assim" nesse caso navega direto pro href pendente em vez de usar
+ *   history.back().
  * - No máximo uma vez por sessão (sessionStorage, chave própria do plugin).
  * - Sem captura de dado nenhum: não lê nem envia valores de campo nenhum,
  *   só observa que ALGUM campo recebeu interação.
@@ -29,6 +37,7 @@
 	var hasInteracted = false;
 	var allowNextPopstate = false;
 	var popupEl = null;
+	var pendingNavigationHref = null;
 
 	function alreadyShownThisSession() {
 		try {
@@ -95,6 +104,14 @@
 	function handleExitClick() {
 		pushToDataLayer( { event: 'checkout_abandon_popup_click', action: 'sair' } );
 		hidePopup();
+
+		if ( pendingNavigationHref ) {
+			var href = pendingNavigationHref;
+			pendingNavigationHref = null;
+			window.location.href = href;
+			return;
+		}
+
 		allowNextPopstate = true;
 		try {
 			history.back();
@@ -158,6 +175,39 @@
 		} );
 	}
 
+	function bindLinkClickIntercept() {
+		document.addEventListener( 'click', function ( e ) {
+			var link = e.target.closest( 'a[href]' );
+			if ( ! link ) {
+				return;
+			}
+
+			if ( ! hasInteracted || alreadyShownThisSession() ) {
+				return;
+			}
+
+			var href = link.getAttribute( 'href' );
+			if ( ! href || href === '#' || href.indexOf( 'javascript:' ) === 0 || href.indexOf( 'mailto:' ) === 0 || href.indexOf( 'tel:' ) === 0 ) {
+				return;
+			}
+
+			if ( link.target === '_blank' ) {
+				return;
+			}
+
+			if ( link.closest( '#wi-checkout-abandon-popup' ) ) {
+				// Defensivo: os botões do popup são <button>, não <a>, mas não custa
+				// garantir que um clique dentro do próprio popup nunca seja
+				// interceptado como se fosse navegação de saída.
+				return;
+			}
+
+			e.preventDefault();
+			pendingNavigationHref = link.href;
+			showPopup();
+		} );
+	}
+
 	function bindPopupButtons() {
 		var el = getPopupEl();
 		if ( ! el ) {
@@ -201,6 +251,7 @@
 		bindPopupButtons();
 		bindDesktopExitIntent();
 		bindMobileBackButton();
+		bindLinkClickIntercept();
 	}
 
 	if ( document.readyState === 'loading' ) {
