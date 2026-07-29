@@ -2,10 +2,11 @@
 /**
  * Shows a notice on checkout explaining that an account is created
  * automatically with the e-mail entered below, and the password arrives by
- * e-mail — since Page 012 turned off guest checkout entirely
- * (`woocommerce_enable_guest_checkout` = no), every checkout now creates an
- * account, so this isn't conditional on any checkbox; it's always shown to
- * a logged-out visitor.
+ * e-mail. Guest checkout stays fully open (`woocommerce_enable_guest_
+ * checkout` = yes, untouched) — the account is created silently in the
+ * background after the order is placed (see checkout-account-auto-
+ * creation.php), not as a requirement to check out. This notice replaces
+ * the native "Criar uma conta?" checkbox, which is hidden by that same file.
  */
 
 defined( 'ABSPATH' ) || exit;

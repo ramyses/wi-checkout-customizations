@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WI Checkout Customizations
  * Description: Reordena os blocos do checkout (Produtos/Informações/Pagamento), adiciona um resumo de valores por forma de pagamento, agrupa o frete em uma caixa expansível e corrige traduções pt-BR ausentes. Feito sob medida para o checkout Elementor Pro + WooCommerce da Web Import Brasil.
- * Version: 1.8.0
+ * Version: 1.9.0
  * Author: Web Import Brasil
  * Text Domain: wi-checkout-customizations
  * Requires Plugins: woocommerce, elementor-pro
@@ -19,10 +19,12 @@ require_once WI_CHECKOUT_DIR . 'includes/checkout-shortcode.php';
 require_once WI_CHECKOUT_DIR . 'includes/compat-fluid-checkout.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-thumbnail.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-mercadopago-fixes.php';
-// TEMPORARIAMENTE DESATIVADO 2026-07-20: conta deixou de ser obrigatoria
-// (36h sem vendas apos Pages 011/012). Reativar junto com
-// woocommerce_enable_guest_checkout=no se a exigencia voltar.
-// require_once WI_CHECKOUT_DIR . 'includes/checkout-account-creation-notice.php';
+// Reativado 2026-07-29 (Page 030-adjacent quick fix): conta criada
+// automaticamente em segundo plano, sem tornar login/conta obrigatorio —
+// guest checkout continua livre (woocommerce_enable_guest_checkout=yes,
+// intocado). Ver checkout-account-auto-creation.php pra logica completa.
+require_once WI_CHECKOUT_DIR . 'includes/checkout-account-creation-notice.php';
+require_once WI_CHECKOUT_DIR . 'includes/checkout-account-auto-creation.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-boleto-download-link.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-abandonment-popup.php';
 
