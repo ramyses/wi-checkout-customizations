@@ -4,6 +4,9 @@
  * checkout, and creates a customer account automatically in the background
  * for every guest order — using the e-mail already entered, with an
  * auto-generated password sent by WooCommerce's native "new account" e-mail.
+ * The new customer is logged in right away (same as core does for opt-in
+ * account creation), so the thank-you page — and with it the Pix QR code —
+ * renders normally instead of being gated behind a login form.
  *
  * Guest checkout stays fully open: `woocommerce_enable_guest_checkout` and
  * `woocommerce_enable_signup_and_login_from_checkout` are never touched
@@ -62,10 +65,20 @@ function wi_auto_create_account_from_order( int $order_id ): void {
 		$existing_user_id = email_exists( $email );
 
 		if ( $existing_user_id ) {
-			// Account already exists — just attach the order, no new account,
-			// no error, no duplicate-e-mail notice.
-			$order->set_customer_id( $existing_user_id );
-			$order->save();
+			// Account already exists — leave this as a guest order, do NOT attach
+			// it to that account.
+			//
+			// Attaching it would make WooCommerce treat the order as belonging to
+			// a "known shopper", and WC_Shortcode_Checkout::order_received() then
+			// refuses to render the thank-you page to anyone not logged in as that
+			// customer: it prints "Please log in to your account to view this
+			// order" and returns *before* the `woocommerce_thankyou` hook fires —
+			// so the Pix QR code never renders and the sale is lost.
+			//
+			// Auto-logging the visitor in is not an option in this branch either:
+			// anyone could type a stranger's e-mail at checkout and land inside
+			// that person's account. WooCommerce core behaves the same way — it
+			// never links a guest order to an existing account by e-mail alone.
 			return;
 		}
 
@@ -81,6 +94,17 @@ function wi_auto_create_account_from_order( int $order_id ): void {
 			error_log( 'wi_auto_create_account_from_order: failed for order ' . $order_id . ' — ' . $new_user_id->get_error_message() );
 			return;
 		}
+
+		// Log the new customer in immediately, exactly like WooCommerce core does
+		// when a shopper opts into "create an account" at checkout
+		// (WC_Checkout::process_customer() -> wc_set_customer_auth_cookie()).
+		//
+		// This is load-bearing, not a nicety: without it the order carries a
+		// customer_id while the visitor is still a guest, and order_received()
+		// blocks the thank-you page behind a login form instead of running the
+		// `woocommerce_thankyou` hook — which is precisely what stopped the Pix
+		// QR code from ever reaching the customer.
+		wc_set_customer_auth_cookie( $new_user_id );
 
 		$order->set_customer_id( $new_user_id );
 		$order->save();
