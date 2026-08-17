@@ -308,19 +308,23 @@ add_filter( 'rocket_rucss_safelist', 'wi_parcel_rucss_safelist' );
  * @return string Escaped href.
  */
 function wi_parcel_mailto_href(): string {
-	$subject = __( 'Solicitação de link de parcelamento', 'wi-checkout-customizations' );
+	$subject = __( 'Pós-Venda — pagamento no cartão não aprovado', 'wi-checkout-customizations' );
 
 	$lines = array(
-		__( 'Olá! Gostaria de receber um link de parcelamento para concluir minha compra.', 'wi-checkout-customizations' ),
+		__( 'Olá! Meu pagamento no cartão não foi aprovado e gostaria de ajuda para concluir a compra.', 'wi-checkout-customizations' ),
 		'',
 	);
+
+	// The copy asks the customer to quote the order number, so the body leads
+	// with that field. On the payment form the order does not exist yet, which
+	// is why the line is a blank to fill in rather than something prefilled.
+	$lines[] = __( 'Número do pedido:', 'wi-checkout-customizations' );
 
 	$total = wi_parcel_cart_total_text();
 
 	if ( '' !== $total ) {
 		/* translators: %s: cart total, already formatted as currency. */
-		$lines[] = sprintf( __( 'Valor do meu carrinho: %s', 'wi-checkout-customizations' ), $total );
-		$lines[] = '';
+		$lines[] = sprintf( __( 'Valor da compra: %s', 'wi-checkout-customizations' ), $total );
 	}
 
 	$lines[] = __( 'Meu nome:', 'wi-checkout-customizations' );
@@ -370,6 +374,7 @@ function wi_parcel_styles(): string {
 .wi-parcel{border:1px solid #d6d9e0;border-left:4px solid #0f6fd1;border-radius:6px;background:#f6f9fd;padding:16px 18px;margin:14px 0;font-size:14px;line-height:1.5;color:#22262e}
 .wi-parcel__title{font-weight:700;font-size:15px;margin:0 0 6px;color:#12161d}
 .wi-parcel__text{margin:0 0 12px}
+.wi-parcel__warning{margin:14px 0 0;padding:10px 12px;border-left:3px solid #FF6A00;background:rgba(255,106,0,.07);font-size:13px;line-height:1.5;color:#17324A;border-radius:0 8px 8px 0}
 .wi-parcel__button{display:inline-block;background:#0f6fd1;color:#fff !important;text-decoration:none !important;font-weight:600;padding:11px 20px;border-radius:5px;border:0;cursor:pointer;font-size:14px;line-height:1.2}
 .wi-parcel__button:hover,.wi-parcel__button:focus{background:#0b559f;color:#fff !important}
 .wi-parcel__fallback{margin:10px 0 0;font-size:13px;color:#4a515c}
@@ -391,14 +396,33 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 
 	$title = $is_declined
 		? __( 'Seu pagamento não foi aprovado — ainda dá para concluir.', 'wi-checkout-customizations' )
-		: __( 'Precisa de mais prazo ou o cartão não passou?', 'wi-checkout-customizations' );
+		: __( 'Se o pagamento no cartão não for aprovado', 'wi-checkout-customizations' );
 
-	$text = __( 'Enviamos um link de parcelamento direto com o banco, com mais opções de parcelas. É só pedir.', 'wi-checkout-customizations' );
+	// Copy supplied by the client on 17/08 and used verbatim.
+	//
+	// ONE KNOWN MISMATCH, LEFT IN PLACE ON PURPOSE. The third paragraph asks
+	// the customer to quote the order number. On the payment form the order
+	// does not exist yet — WooCommerce only creates it when the form is
+	// submitted — so at that point there is no number to quote. The paragraph
+	// is correct on the declined-order screen, where the order does exist.
+	// Flagged to the client; kept verbatim pending their decision.
+	$paragraphs = array(
+		__( 'Caso o Mercado Pago não aprove a tentativa de pagamento no cartão, não é necessário refazer toda a compra nem preencher novamente seus dados de entrega.', 'wi-checkout-customizations' ),
+		__( 'Seu pedido permanecerá registrado em nosso sistema por um período para que nossa equipe possa ajudar você a concluir o pagamento por outra opção segura.', 'wi-checkout-customizations' ),
+		__( 'Clique abaixo para falar com nosso Pós-Venda por e-mail. Informe o número do pedido e nossa equipe poderá orientar você e, quando disponível, enviar um novo link seguro para pagamento no cartão.', 'wi-checkout-customizations' ),
+	);
+
+	$warning = __( 'Importante: não feche ou refaça o pedido antes de falar conosco, pois podemos utilizar o pedido já realizado e manter os dados cadastrados.', 'wi-checkout-customizations' );
 
 	$html  = wi_parcel_styles();
 	$html .= '<div class="wi-parcel wi-parcel--' . esc_attr( $variant ) . '">';
 	$html .= '<p class="wi-parcel__title">' . esc_html( $title ) . '</p>';
-	$html .= '<p class="wi-parcel__text">' . esc_html( $text ) . '</p>';
+
+	foreach ( $paragraphs as $paragraph ) {
+		$html .= '<p class="wi-parcel__text">' . esc_html( $paragraph ) . '</p>';
+	}
+
+	$html .= '<p class="wi-parcel__warning">' . esc_html( $warning ) . '</p>';
 
 	if ( $is_declined ) {
 		// Chatwoot only here. On the payment form it stays off on purpose — the
@@ -412,7 +436,7 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 			'">' . esc_html__( 'Falar com a gente agora', 'wi-checkout-customizations' ) . '</button>';
 	} else {
 		$html .= '<a class="wi-parcel__button" href="' . wi_parcel_mailto_href() . '">' .
-			esc_html__( 'Solicitar link de parcelamento', 'wi-checkout-customizations' ) . '</a>';
+			esc_html__( 'Falar com o Pós-Venda por e-mail', 'wi-checkout-customizations' ) . '</a>';
 	}
 
 	// The address in plain text, not only behind the button: on desktop, a
