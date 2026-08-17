@@ -27,5 +27,9 @@ require_once WI_CHECKOUT_DIR . 'includes/checkout-account-creation-notice.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-account-auto-creation.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-boleto-download-link.php';
 require_once WI_CHECKOUT_DIR . 'includes/checkout-abandonment-popup.php';
+// Em revisao (2026-08-17): mensagem de link de parcelamento sob o Cartao de
+// Credito. Renderiza SO na pagina interna de pre-visualizacao; o checkout real
+// nao muda ate a aprovacao. Ver o cabecalho do arquivo pro porque do gancho.
+require_once WI_CHECKOUT_DIR . 'includes/checkout-parcelamento-alternativo.php';
 
 register_activation_hook( __FILE__, 'wi_checkout_create_template' );
