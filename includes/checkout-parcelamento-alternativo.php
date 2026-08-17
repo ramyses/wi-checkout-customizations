@@ -431,3 +431,45 @@ function wi_parcel_preview_showcase(): string {
 
 	return $html;
 }
+
+/**
+ * Makes the preview page report as a checkout page.
+ *
+ * WHY THIS IS NEEDED. The live checkout is page ID 11, which is what
+ * `woocommerce_checkout_page_id` points at, so `is_checkout()` is true there.
+ * The preview page is a different ID, and its content is `[wi_checkout]` —
+ * this project's own shortcode, not WooCommerce's `[woocommerce_checkout]`.
+ * `is_checkout()` only recognises the configured page ID or WooCommerce's own
+ * shortcode, so on the preview page it returned false.
+ *
+ * Measured consequence, 17/08: everything the theme and this plugin gate on
+ * `is_checkout()` was skipped on the preview — the thumbnail sizing CSS, the
+ * checkout JS, and the rule that hides the page title. The page rendered with
+ * raw WooCommerce markup: product images at full size and a stray
+ * "Checkout – pre-visualizacao interna" heading. The two pages are otherwise
+ * byte-identical in content, template and `_elementor_data` (227 bytes each),
+ * so this filter was the only difference that mattered.
+ *
+ * WHY THIS IS SAFE. The filter returns the untouched value for every request
+ * that is not the preview page, so the live checkout and every other page are
+ * unaffected. Making it true on the preview is precisely the intent: the point
+ * of the page is to render exactly like the real checkout.
+ *
+ * It also keeps a deliberate protection working. The Chatwoot widget bails on
+ * `is_checkout()`, so the widget stays off the preview's payment form just as
+ * it is off the live one — the preview keeps telling the truth about that.
+ *
+ * The `did_action( 'wp' )` guard avoids calling `is_page()` before the main
+ * query exists, which would emit a _doing_it_wrong notice.
+ *
+ * @param bool $is_checkout Whether WooCommerce already considers this checkout.
+ * @return bool
+ */
+function wi_parcel_force_is_checkout( $is_checkout ) {
+	if ( $is_checkout || ! did_action( 'wp' ) ) {
+		return $is_checkout;
+	}
+
+	return wi_parcel_is_preview_page();
+}
+add_filter( 'woocommerce_is_checkout', 'wi_parcel_force_is_checkout' );
