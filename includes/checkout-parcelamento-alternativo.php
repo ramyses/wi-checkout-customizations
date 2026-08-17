@@ -375,6 +375,10 @@ function wi_parcel_styles(): string {
 .wi-parcel__title{font-weight:700;font-size:15px;margin:0 0 6px;color:#12161d}
 .wi-parcel__text{margin:0 0 12px}
 .wi-parcel__warning{margin:14px 0 0;padding:10px 12px;border-left:3px solid #FF6A00;background:rgba(255,106,0,.07);font-size:13px;line-height:1.5;color:#17324A;border-radius:0 8px 8px 0}
+.wi-parcel__actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.wi-parcel__actions .wi-parcel__button{flex:1 1 190px;margin-top:0}
+.wi-parcel__button--alt{background:#17324A}
+.wi-parcel__button--alt:hover{background:#0f2436}
 .wi-parcel__button{display:inline-block;background:#0f6fd1;color:#fff !important;text-decoration:none !important;font-weight:600;padding:11px 20px;border-radius:5px;border:0;cursor:pointer;font-size:14px;line-height:1.2}
 .wi-parcel__button:hover,.wi-parcel__button:focus{background:#0b559f;color:#fff !important}
 .wi-parcel__fallback{margin:10px 0 0;font-size:13px;color:#4a515c}
@@ -394,7 +398,7 @@ function wi_parcel_styles(): string {
 function wi_parcel_render_block( string $variant = 'payment' ): string {
 	$is_declined = ( 'declined' === $variant );
 
-	$title = $is_declined
+	$title = ( $is_declined || 'both' === $variant )
 		? __( 'Seu pagamento não foi aprovado — ainda dá para concluir.', 'wi-checkout-customizations' )
 		: __( 'Se o pagamento no cartão não for aprovado', 'wi-checkout-customizations' );
 
@@ -424,7 +428,28 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 
 	$html .= '<p class="wi-parcel__warning">' . esc_html( $warning ) . '</p>';
 
-	if ( $is_declined ) {
+	$show_both = ( 'both' === $variant );
+
+	if ( $show_both ) {
+		// Both actions side by side, as requested on 17/08.
+		//
+		// HONEST CAVEAT, MEASURED: the Chatwoot button is inert on any
+		// checkout-type page. wi-chatwoot-widget bails on is_checkout(), and
+		// that is true for the payment form AND for the order-received screen,
+		// so window.$chatwoot never exists there and the click silently does
+		// nothing. Verified 17/08 with a real cart: /finalizar-compra/ and the
+		// preview both carry zero Chatwoot markup, while /carrinho/ carries it.
+		// Making this button work means letting the widget load on the
+		// declined-order screen — a change to a different plugin, and to a
+		// protection put there on purpose.
+		$html .= '<div class="wi-parcel__actions">';
+		$html .= '<a class="wi-parcel__button" href="' . wi_parcel_mailto_href() . '">' .
+			esc_html__( 'Falar com o Pós-Venda por e-mail', 'wi-checkout-customizations' ) . '</a>';
+		$html .= '<button type="button" class="wi-parcel__button wi-parcel__button--alt" onclick="' .
+			esc_attr( "if(window.\$chatwoot){window.\$chatwoot.toggle('open');}" ) .
+			'">' . esc_html__( 'Falar com a gente agora', 'wi-checkout-customizations' ) . '</button>';
+		$html .= '</div>';
+	} elseif ( $is_declined ) {
 		// Chatwoot only here. On the payment form it stays off on purpose — the
 		// widget has a history of interfering with the Mercado Pago card fields,
 		// which is why wi-chatwoot-widget bails out on the checkout. By this
@@ -486,6 +511,12 @@ function wi_parcel_preview_showcase(): string {
 	$html .= '<span class="wi-parcel-preview__label">' .
 		esc_html__( 'Variante 2 — página de pedido não aprovado', 'wi-checkout-customizations' ) . '</span>';
 	$html .= wi_parcel_render_block( 'declined' );
+	$html .= '</div>';
+
+	$html .= '<div class="wi-parcel-preview">';
+	$html .= '<span class="wi-parcel-preview__label">' .
+		esc_html__( 'Variante 3 — os dois botões lado a lado', 'wi-checkout-customizations' ) . '</span>';
+	$html .= wi_parcel_render_block( 'both' );
 	$html .= '</div>';
 
 	return $html;
