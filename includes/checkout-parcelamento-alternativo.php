@@ -141,11 +141,23 @@ function wi_parcel_is_checkout_ajax(): bool {
  * referer is the page being redrawn, which is precisely the signal we want.
  */
 function wi_parcel_should_render(): bool {
-	if ( wi_parcel_is_preview_page() ) {
-		return true;
-	}
-
-	return wi_parcel_is_checkout_ajax() && wi_parcel_referer_is_preview();
+	// LIVE since 17/08 — the client approved "Variante 1" for the real
+	// checkout. Before that this returned true only for the preview page.
+	//
+	// No further scoping is needed here, and that is by construction rather
+	// than by luck: the only caller is the `woocommerce_after_template_part`
+	// handler, which already matches Mercado Pago's own card template
+	// (WI_PARCEL_MP_TEMPLATE). That template renders in exactly one place —
+	// inside the Mercado Pago payment box — so the block cannot reach the Pix
+	// option or any other gateway. It also means the AJAX redraw is covered
+	// without a referer test: when WooCommerce re-renders the payment methods
+	// through `/?wc-ajax=update_order_review`, Mercado Pago renders its
+	// template again and this fires again.
+	//
+	// To take it back off the live checkout, restore:
+	//     return wi_parcel_is_preview_page()
+	//         || ( wi_parcel_is_checkout_ajax() && wi_parcel_referer_is_preview() );
+	return true;
 }
 
 /**
@@ -490,7 +502,14 @@ function wi_parcel_after_mp_card_form( $template_name ): void {
 		return;
 	}
 
-	echo wi_parcel_preview_showcase(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts above.
+	// The labelled three-variant showcase stays on the internal preview page,
+	// where it exists to be compared. Real customers get only the approved
+	// one: "Variante 1", the payment-form copy. Approved 17/08.
+	$html = ( wi_parcel_is_preview_page() || wi_parcel_referer_is_preview() )
+		? wi_parcel_preview_showcase()
+		: wi_parcel_render_block( 'payment' );
+
+	echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts above.
 }
 add_action( 'woocommerce_after_template_part', 'wi_parcel_after_mp_card_form', 10, 1 );
 
