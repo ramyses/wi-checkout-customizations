@@ -97,11 +97,55 @@ function wi_parcel_is_preview_page(): bool {
 }
 
 /**
+ * True when this request's referring page is the preview page.
+ *
+ * Same-origin requests send the full path under every mainstream
+ * Referrer-Policy, and a real customer's referer is the live checkout, never
+ * the preview slug.
+ */
+function wi_parcel_referer_is_preview(): bool {
+	if ( empty( $_SERVER['HTTP_REFERER'] ) ) {
+		return false;
+	}
+
+	$referer = esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) );
+	$path    = (string) wp_parse_url( $referer, PHP_URL_PATH );
+
+	return '' !== $path && trim( $path, '/' ) === WI_PARCEL_PREVIEW_SLUG;
+}
+
+/**
+ * True while WooCommerce is redrawing the checkout over AJAX.
+ */
+function wi_parcel_is_checkout_ajax(): bool {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	return wp_doing_ajax() || ! empty( $_GET['wc-ajax'] );
+}
+
+/**
  * Gate for rendering the block. Kept as one function so switching the feature
  * on for the live checkout later is a single, reviewable edit.
+ *
+ * WHY THE AJAX BRANCH EXISTS. The checkout redraws itself: changing the CEP,
+ * the address or the shipping option makes WooCommerce re-render the payment
+ * methods through `/?wc-ajax=update_order_review`. That request is not the
+ * page, so `is_page()` is false, the block was not emitted, and the Mercado
+ * Pago form painted over the space. Reported from the preview on 17/08 —
+ * "os campos do cartão estão atualizando e sobrepondo as mudanças".
+ *
+ * WHY THE AJAX BRANCH IS NARROW. The referer is consulted *only* during a
+ * checkout AJAX call, never on a normal page load. Without that restriction a
+ * customer who opened the preview and then navigated to `/finalizar-compra/`
+ * would carry `/checkout/` as their referer and would see the block on the
+ * live checkout — the exact thing this gate exists to prevent. During AJAX the
+ * referer is the page being redrawn, which is precisely the signal we want.
  */
 function wi_parcel_should_render(): bool {
-	return wi_parcel_is_preview_page();
+	if ( wi_parcel_is_preview_page() ) {
+		return true;
+	}
+
+	return wi_parcel_is_checkout_ajax() && wi_parcel_referer_is_preview();
 }
 
 /**
@@ -117,17 +161,8 @@ function wi_parcel_is_preview_submission(): bool {
 		return true;
 	}
 
-	// Secondary signal: the AJAX request's referring page. Same-origin requests
-	// send the full path under every mainstream Referrer-Policy, and a real
-	// customer's referer is the live checkout, never the preview slug.
-	if ( empty( $_SERVER['HTTP_REFERER'] ) ) {
-		return false;
-	}
-
-	$referer = esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) );
-	$path    = (string) wp_parse_url( $referer, PHP_URL_PATH );
-
-	return '' !== $path && trim( $path, '/' ) === WI_PARCEL_PREVIEW_SLUG;
+	// Secondary signal: the referring page.
+	return wi_parcel_referer_is_preview();
 }
 
 /* -------------------------------------------------------------------------
