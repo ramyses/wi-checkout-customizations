@@ -382,7 +382,7 @@ function wi_parcel_styles(): string {
 .wi-parcel__button{display:inline-block;background:#0f6fd1;color:#fff !important;text-decoration:none !important;font-weight:600;padding:11px 20px;border-radius:5px;border:0;cursor:pointer;font-size:14px;line-height:1.2}
 .wi-parcel__button:hover,.wi-parcel__button:focus{background:#0b559f;color:#fff !important}
 .wi-parcel__fallback{margin:10px 0 0;font-size:13px;color:#4a515c}
-.wi-parcel__email{font-weight:600;color:#0f6fd1;white-space:nowrap}
+.wi-parcel__email{font-weight:600;color:#0f6fd1;white-space:nowrap;cursor:pointer;border:0;background:none;padding:0;font:inherit;text-decoration:underline}
 .wi-parcel-preview{border:2px dashed #b8863b;background:#fffaf0;border-radius:6px;padding:12px 14px;margin:14px 0}
 .wi-parcel-preview__label{display:block;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#8a6224;margin:0 0 8px}
 </style>';
@@ -446,7 +446,7 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 		$html .= '<a class="wi-parcel__button" href="' . wi_parcel_mailto_href() . '">' .
 			esc_html__( 'Falar com o Pós-Venda por e-mail', 'wi-checkout-customizations' ) . '</a>';
 		$html .= '<button type="button" class="wi-parcel__button wi-parcel__button--alt" onclick="' .
-			esc_attr( "if(window.\$chatwoot){window.\$chatwoot.toggle('open');}" ) .
+			'wiParcelOpenChat(this);' .
 			'">' . esc_html__( 'Falar com a gente agora', 'wi-checkout-customizations' ) . '</button>';
 		$html .= '</div>';
 	} elseif ( $is_declined ) {
@@ -457,7 +457,7 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 		// Single-quoted on purpose: in a double-quoted PHP string `$chatwoot`
 		// would be read as a variable and interpolated away to nothing.
 		$html .= '<button type="button" class="wi-parcel__button" onclick="' .
-			esc_attr( 'if(window.$chatwoot){window.$chatwoot.toggle(\'open\');}' ) .
+			'wiParcelOpenChat(this);' .
 			'">' . esc_html__( 'Falar com a gente agora', 'wi-checkout-customizations' ) . '</button>';
 	} else {
 		$html .= '<a class="wi-parcel__button" href="' . wi_parcel_mailto_href() . '">' .
@@ -469,7 +469,7 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 	// nothing happens, with no error — around 20% of this store's traffic.
 	$html .= '<p class="wi-parcel__fallback">' .
 		esc_html__( 'ou escreva para', 'wi-checkout-customizations' ) . ' ' .
-		'<span class="wi-parcel__email">' . esc_html( WI_PARCEL_EMAIL ) . '</span></p>';
+		'<button type="button" class="wi-parcel__email" data-email="' . esc_attr( WI_PARCEL_EMAIL ) . '" onclick="wiParcelCopyEmail(this);" title="' . esc_attr__( 'clique para copiar', 'wi-checkout-customizations' ) . '">' . esc_html( WI_PARCEL_EMAIL ) . '</button></p>';
 
 	$html .= '</div>';
 
@@ -563,3 +563,141 @@ function wi_parcel_force_is_checkout( $is_checkout ) {
 	return wi_parcel_is_preview_page();
 }
 add_filter( 'woocommerce_is_checkout', 'wi_parcel_force_is_checkout' );
+
+/* -------------------------------------------------------------------------
+ * On-demand Chatwoot, and a copy-to-clipboard fallback for the address.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The Chatwoot widget's own settings, or an empty array when unconfigured.
+ *
+ * Read from the wi-chatwoot-widget plugin's option so there is a single source
+ * of truth: if the token is rotated there, this follows automatically.
+ *
+ * @return array{base_url:string,website_token:string}|array{}
+ */
+function wi_parcel_chatwoot_config(): array {
+	$o     = (array) get_option( 'wi_chatwoot_widget_settings', array() );
+	$base  = isset( $o['base_url'] ) ? trim( (string) $o['base_url'] ) : '';
+	$token = isset( $o['website_token'] ) ? trim( (string) $o['website_token'] ) : '';
+
+	if ( '' === $base || '' === $token ) {
+		return array();
+	}
+
+	return array(
+		'base_url'      => $base,
+		'website_token' => $token,
+	);
+}
+
+/**
+ * Prints the helper script once: opens Chatwoot on demand, and copies the
+ * support address to the clipboard.
+ *
+ * WHY CHATWOOT IS LOADED ON CLICK RATHER THAN WITH THE PAGE. wi-chatwoot-widget
+ * deliberately bails on `is_checkout()`, so the widget never loads on the
+ * payment form — a protection added because this checkout has a history of
+ * timing fragility with Mercado Pago. Loading the SDK only when the customer
+ * presses the button preserves that intent exactly: nothing from the chat runs
+ * while the card is being filled in. The script only appears after a decline,
+ * when the customer has explicitly asked for help.
+ *
+ * WHY THE CLIPBOARD FALLBACK EXISTS. Reported 17/08: the `mailto:` button did
+ * nothing on the reviewer's desktop. That is the documented behaviour, not a
+ * bug — a browser with no mail client registered swallows `mailto:` silently,
+ * with no error and no feedback. Around 20% of this store's traffic is desktop.
+ * The address is now copyable with one click and confirms visually.
+ */
+function wi_parcel_print_helper_script(): void {
+	static $done = false;
+
+	if ( $done || ! wi_parcel_should_render() ) {
+		return;
+	}
+
+	$done = true;
+	$cfg  = wi_parcel_chatwoot_config();
+	?>
+	<script>
+	window.wiParcelOpenChat = function ( btn ) {
+		var cfg = <?php echo wp_json_encode( $cfg ); ?>;
+
+		// Already loaded on this page (or by the widget plugin elsewhere).
+		if ( window.$chatwoot ) {
+			window.$chatwoot.toggle( 'open' );
+			return;
+		}
+
+		if ( ! cfg.base_url || ! cfg.website_token ) {
+			return;
+		}
+
+		if ( window.wiParcelChatLoading ) {
+			return;
+		}
+		window.wiParcelChatLoading = true;
+
+		var label = btn ? btn.textContent : '';
+		if ( btn ) {
+			btn.textContent = <?php echo wp_json_encode( __( 'Abrindo o chat…', 'wi-checkout-customizations' ) ); ?>;
+			btn.disabled = true;
+		}
+
+		document.addEventListener( 'chatwoot:ready', function () {
+			if ( btn ) {
+				btn.textContent = label;
+				btn.disabled = false;
+			}
+			if ( window.$chatwoot ) {
+				window.$chatwoot.toggle( 'open' );
+			}
+		} );
+
+		window.chatwootSettings = { position: 'left', type: 'expanded_bubble', launcherTitle: 'Fale conosco' };
+
+		var s = document.createElement( 'script' );
+		s.src = cfg.base_url + '/packs/js/sdk.js';
+		s.defer = true;
+		s.async = true;
+		s.onload = function () {
+			window.chatwootSDK.run( { websiteToken: cfg.website_token, baseUrl: cfg.base_url } );
+		};
+		s.onerror = function () {
+			window.wiParcelChatLoading = false;
+			if ( btn ) {
+				btn.textContent = label;
+				btn.disabled = false;
+			}
+		};
+		document.head.appendChild( s );
+	};
+
+	window.wiParcelCopyEmail = function ( el ) {
+		var mail = el.getAttribute( 'data-email' ) || el.textContent.trim();
+		var done = function () {
+			var old = el.textContent;
+			el.textContent = <?php echo wp_json_encode( __( 'e-mail copiado!', 'wi-checkout-customizations' ) ); ?>;
+			setTimeout( function () { el.textContent = old; }, 2000 );
+		};
+
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			navigator.clipboard.writeText( mail ).then( done );
+			return;
+		}
+
+		// Older browsers, and any context where the async clipboard is blocked.
+		var t = document.createElement( 'textarea' );
+		t.value = mail;
+		t.setAttribute( 'readonly', '' );
+		t.style.position = 'fixed';
+		t.style.opacity = '0';
+		document.body.appendChild( t );
+		t.select();
+		try { document.execCommand( 'copy' ); done(); } catch ( e ) {}
+		document.body.removeChild( t );
+	};
+	</script>
+	<?php
+}
+add_action( 'wp_footer', 'wi_parcel_print_helper_script', 5 );
