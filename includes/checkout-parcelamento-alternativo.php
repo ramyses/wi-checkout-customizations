@@ -676,7 +676,32 @@ function wi_parcel_print_helper_script(): void {
 			}
 		} );
 
-		window.chatwootSettings = { position: 'left', type: 'expanded_bubble', launcherTitle: 'Fale conosco' };
+		// darkMode 'light' é deliberado. Sem ele o widget segue o tema do
+		// sistema operacional do visitante, e num computador em modo escuro o
+		// painel abre preto e branco — ignorando o laranja da marca, que está
+		// configurado na inbox 123382 como #eb5c24. Relatado em 18/08.
+		window.chatwootSettings = {
+			position: 'left',
+			type: 'expanded_bubble',
+			launcherTitle: 'Fale conosco',
+			darkMode: 'light'
+		};
+
+		// O plugin wi-chatwoot-widget imprime estas regras nas páginas onde
+		// carrega, mas ele sai fora no checkout — então aqui elas não existem e
+		// o painel abriria em tela cheia no celular. Copiadas de
+		// wi-chatwoot-widget/includes/widget-embed.php para o comportamento
+		// ficar igual ao do resto do site.
+		if ( ! document.getElementById( 'wi-parcel-chat-css' ) ) {
+			var st = document.createElement( 'style' );
+			st.id = 'wi-parcel-chat-css';
+			st.textContent =
+				'@media (max-width:667px){.woot-widget-holder{' +
+				'top:5vh !important;right:4vw !important;left:4vw !important;' +
+				'bottom:5vh !important;width:auto !important;height:90vh !important;' +
+				'max-width:92vw !important;border-radius:16px !important}}';
+			document.head.appendChild( st );
+		}
 
 		var s = document.createElement( 'script' );
 		s.src = cfg.base_url + '/packs/js/sdk.js';
