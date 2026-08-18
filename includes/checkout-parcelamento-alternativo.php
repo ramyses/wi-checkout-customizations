@@ -393,6 +393,7 @@ function wi_parcel_styles(): string {
 .wi-parcel__button--alt:hover{background:#0f2436}
 .wi-parcel__button{display:inline-block;background:#0f6fd1;color:#fff !important;text-decoration:none !important;font-weight:600;padding:11px 20px;border-radius:5px;border:0;cursor:pointer;font-size:14px;line-height:1.2}
 .wi-parcel__button:hover,.wi-parcel__button:focus{background:#0b559f;color:#fff !important}
+.wi-parcel__form{margin-top:14px;display:grid;gap:10px}.wi-parcel__field{display:grid;gap:4px;font-size:13px;color:#4a515c}.wi-parcel__field input{padding:10px 12px;border:1px solid #c9cfd8;border-radius:5px;font:inherit;background:#fff}.wi-parcel__field input:focus{outline:2px solid #0f6fd1;outline-offset:1px}.wi-parcel__status{margin:0;font-size:13px;font-weight:600}.wi-parcel__status--ok{color:#1a7f37}.wi-parcel__status--erro{color:#b42318}
 .wi-parcel__fallback{margin:10px 0 0;font-size:13px;color:#4a515c}
 .wi-parcel__email{font-weight:600;color:#0f6fd1;white-space:nowrap;cursor:pointer;border:0;background:none;padding:0;font:inherit;text-decoration:underline}
 .wi-parcel-preview{border:2px dashed #b8863b;background:#fffaf0;border-radius:6px;padding:12px 14px;margin:14px 0}
@@ -455,8 +456,9 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 		// declined-order screen — a change to a different plugin, and to a
 		// protection put there on purpose.
 		$html .= '<div class="wi-parcel__actions">';
-		$html .= '<a class="wi-parcel__button" href="' . wi_parcel_mailto_href() . '">' .
-			esc_html__( 'Falar com o Pós-Venda por e-mail', 'wi-checkout-customizations' ) . '</a>';
+		$html .= '<button type="button" class="wi-parcel__button" onclick="wiParcelToggleForm(this);">' .
+			esc_html__( 'Pedir ajuda para concluir a compra', 'wi-checkout-customizations' ) . '</button>';
+		$html .= wi_parcel_render_form();
 		$html .= '<button type="button" class="wi-parcel__button wi-parcel__button--alt" onclick="' .
 			'wiParcelOpenChat(this);' .
 			'">' . esc_html__( 'Falar com a gente agora', 'wi-checkout-customizations' ) . '</button>';
@@ -472,15 +474,16 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 			'wiParcelOpenChat(this);' .
 			'">' . esc_html__( 'Falar com a gente agora', 'wi-checkout-customizations' ) . '</button>';
 	} else {
-		$html .= '<a class="wi-parcel__button" href="' . wi_parcel_mailto_href() . '">' .
-			esc_html__( 'Falar com o Pós-Venda por e-mail', 'wi-checkout-customizations' ) . '</a>';
+		$html .= '<button type="button" class="wi-parcel__button" onclick="wiParcelToggleForm(this);">' .
+			esc_html__( 'Pedir ajuda para concluir a compra', 'wi-checkout-customizations' ) . '</button>';
+		$html .= wi_parcel_render_form();
 	}
 
 	// The address in plain text, not only behind the button: on desktop, a
 	// visitor with no mail client configured clicks a `mailto:` and simply
 	// nothing happens, with no error — around 20% of this store's traffic.
 	$html .= '<p class="wi-parcel__fallback">' .
-		esc_html__( 'ou escreva para', 'wi-checkout-customizations' ) . ' ' .
+		esc_html__( 'ou, se preferir, escreva para', 'wi-checkout-customizations' ) . ' ' .
 		'<button type="button" class="wi-parcel__email" data-email="' . esc_attr( WI_PARCEL_EMAIL ) . '" onclick="wiParcelCopyEmail(this);" title="' . esc_attr__( 'clique para copiar', 'wi-checkout-customizations' ) . '">' . esc_html( WI_PARCEL_EMAIL ) . '</button></p>';
 
 	$html .= '</div>';
@@ -692,6 +695,67 @@ function wi_parcel_print_helper_script(): void {
 		document.head.appendChild( s );
 	};
 
+	window.wiParcelToggleForm = function ( btn ) {
+		var box = btn.parentNode.querySelector( '.wi-parcel__form' );
+		if ( ! box ) { return; }
+		box.hidden = ! box.hidden;
+		if ( ! box.hidden ) {
+			var first = box.querySelector( 'input' );
+			if ( first ) { first.focus(); }
+		}
+	};
+
+	window.wiParcelSend = function ( btn ) {
+		var box    = btn.closest( '.wi-parcel__form' );
+		var status = box.querySelector( '.wi-parcel__status' );
+		var dados  = new FormData();
+
+		dados.append( 'action', <?php echo wp_json_encode( WI_PARCEL_SEND_ACTION ); ?> );
+		dados.append( 'nonce', <?php echo wp_json_encode( wp_create_nonce( WI_PARCEL_SEND_ACTION ) ); ?> );
+
+		var faltando = false;
+		box.querySelectorAll( 'input' ).forEach( function ( i ) {
+			if ( i.required && ! i.value.trim() ) { faltando = true; i.focus(); }
+			dados.append( i.name, i.value );
+		} );
+
+		if ( faltando ) {
+			status.textContent = <?php echo wp_json_encode( __( 'Preencha nome e telefone.', 'wi-checkout-customizations' ) ); ?>;
+			status.className = 'wi-parcel__status wi-parcel__status--erro';
+			return;
+		}
+
+		var rotulo = btn.textContent;
+		btn.disabled = true;
+		btn.textContent = <?php echo wp_json_encode( __( 'Enviando…', 'wi-checkout-customizations' ) ); ?>;
+		status.textContent = '';
+		status.className = 'wi-parcel__status';
+
+		fetch( <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: dados
+		} )
+		.then( function ( r ) { return r.json(); } )
+		.then( function ( r ) {
+			status.textContent = ( r.data && r.data.message ) ? r.data.message : '';
+			status.className = 'wi-parcel__status wi-parcel__status--' + ( r.success ? 'ok' : 'erro' );
+			if ( r.success ) {
+				box.querySelectorAll( 'input' ).forEach( function ( i ) { if ( i.type !== 'hidden' ) { i.value = ''; } } );
+				btn.remove();
+				return;
+			}
+			btn.disabled = false;
+			btn.textContent = rotulo;
+		} )
+		.catch( function () {
+			status.textContent = <?php echo wp_json_encode( sprintf( __( 'Não conseguimos enviar. Escreva para %s.', 'wi-checkout-customizations' ), WI_PARCEL_EMAIL ) ); ?>;
+			status.className = 'wi-parcel__status wi-parcel__status--erro';
+			btn.disabled = false;
+			btn.textContent = rotulo;
+		} );
+	};
+
 	window.wiParcelCopyEmail = function ( el ) {
 		var mail = el.getAttribute( 'data-email' ) || el.textContent.trim();
 		var done = function () {
@@ -720,3 +784,109 @@ function wi_parcel_print_helper_script(): void {
 	<?php
 }
 add_action( 'wp_footer', 'wi_parcel_print_helper_script', 5 );
+
+/* -------------------------------------------------------------------------
+ * Server-side send: a short form that does not depend on a mail client.
+ * ---------------------------------------------------------------------- */
+
+/** AJAX action name and nonce handle for the contact form. */
+define( 'WI_PARCEL_SEND_ACTION', 'wi_parcel_send' );
+
+/**
+ * Renders the inline form. Hidden until the customer asks for it.
+ *
+ * WHY THIS EXISTS. The `mailto:` button opens the visitor's mail application
+ * with a prefilled draft — and only if one is registered. Reported twice on
+ * 17/08 from a desktop browser: the click did nothing at all, silently. Even
+ * when it does open, the customer still has to press send, and the store never
+ * learns whether they did. This form removes both failure points: the store's
+ * own server sends the message, so it works on every device, and the visitor
+ * gets an on-screen confirmation.
+ *
+ * @return string
+ */
+function wi_parcel_render_form(): string {
+	$total = wi_parcel_cart_total_text();
+
+	$html  = '<div class="wi-parcel__form" hidden>';
+	$html .= '<label class="wi-parcel__field"><span>' . esc_html__( 'Seu nome', 'wi-checkout-customizations' ) . '</span>';
+	$html .= '<input type="text" name="nome" autocomplete="name" required></label>';
+	$html .= '<label class="wi-parcel__field"><span>' . esc_html__( 'Telefone / WhatsApp', 'wi-checkout-customizations' ) . '</span>';
+	$html .= '<input type="tel" name="telefone" autocomplete="tel" required></label>';
+	$html .= '<label class="wi-parcel__field"><span>' . esc_html__( 'Número do pedido (se já tiver)', 'wi-checkout-customizations' ) . '</span>';
+	$html .= '<input type="text" name="pedido" inputmode="numeric"></label>';
+	$html .= '<input type="hidden" name="valor" value="' . esc_attr( $total ) . '">';
+	$html .= '<button type="button" class="wi-parcel__button wi-parcel__send" onclick="wiParcelSend(this);">' .
+		esc_html__( 'Enviar pedido de ajuda', 'wi-checkout-customizations' ) . '</button>';
+	$html .= '<p class="wi-parcel__status" role="status" aria-live="polite"></p>';
+	$html .= '</div>';
+
+	return $html;
+}
+
+/**
+ * Receives the form and mails the store. Never trusts a recipient from input:
+ * the destination is the constant, so this cannot be turned into a relay.
+ */
+function wi_parcel_handle_send(): void {
+	check_ajax_referer( WI_PARCEL_SEND_ACTION, 'nonce' );
+
+	// One message per visitor per minute. Enough for a genuine retry, cheap
+	// enough that a bot gains nothing by hammering it.
+	$ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'anon';
+	$key = 'wi_parcel_send_' . md5( $ip );
+
+	if ( get_transient( $key ) ) {
+		wp_send_json_error( array( 'message' => __( 'Já recebemos seu pedido. Aguarde um instante.', 'wi-checkout-customizations' ) ) );
+	}
+
+	$nome     = isset( $_POST['nome'] ) ? sanitize_text_field( wp_unslash( $_POST['nome'] ) ) : '';
+	$telefone = isset( $_POST['telefone'] ) ? sanitize_text_field( wp_unslash( $_POST['telefone'] ) ) : '';
+	$pedido   = isset( $_POST['pedido'] ) ? sanitize_text_field( wp_unslash( $_POST['pedido'] ) ) : '';
+	$valor    = isset( $_POST['valor'] ) ? sanitize_text_field( wp_unslash( $_POST['valor'] ) ) : '';
+
+	if ( '' === $nome || '' === $telefone ) {
+		wp_send_json_error( array( 'message' => __( 'Preencha nome e telefone.', 'wi-checkout-customizations' ) ) );
+	}
+
+	$linhas = array(
+		__( 'Pedido de ajuda vindo do checkout — pagamento no cartão não aprovado.', 'wi-checkout-customizations' ),
+		'',
+		sprintf( 'Nome: %s', $nome ),
+		sprintf( 'Telefone: %s', $telefone ),
+	);
+
+	if ( '' !== $pedido ) {
+		$linhas[] = sprintf( 'Pedido: %s', $pedido );
+	}
+	if ( '' !== $valor ) {
+		$linhas[] = sprintf( 'Valor do carrinho: %s', $valor );
+	}
+
+	$linhas[] = '';
+	$linhas[] = sprintf( 'Enviado em %s', current_time( 'd/m/Y H:i' ) );
+
+	$enviado = wp_mail(
+		WI_PARCEL_EMAIL,
+		sprintf( 'Pós-Venda: %s pediu link de parcelamento', $nome ),
+		implode( "\n", $linhas )
+	);
+
+	if ( ! $enviado ) {
+		wp_send_json_error( array(
+			'message' => sprintf(
+				/* translators: %s: support e-mail address. */
+				__( 'Não conseguimos enviar agora. Escreva para %s.', 'wi-checkout-customizations' ),
+				WI_PARCEL_EMAIL
+			),
+		) );
+	}
+
+	set_transient( $key, 1, MINUTE_IN_SECONDS );
+
+	wp_send_json_success( array(
+		'message' => __( 'Recebemos! Nossa equipe vai entrar em contato com você.', 'wi-checkout-customizations' ),
+	) );
+}
+add_action( 'wp_ajax_' . WI_PARCEL_SEND_ACTION, 'wi_parcel_handle_send' );
+add_action( 'wp_ajax_nopriv_' . WI_PARCEL_SEND_ACTION, 'wi_parcel_handle_send' );
