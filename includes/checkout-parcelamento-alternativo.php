@@ -393,7 +393,7 @@ function wi_parcel_styles(): string {
 .wi-parcel__button--alt:hover{background:#0f2436}
 .wi-parcel__button{display:inline-block;background:#0f6fd1;color:#fff !important;text-decoration:none !important;font-weight:600;padding:11px 20px;border-radius:5px;border:0;cursor:pointer;font-size:14px;line-height:1.2}
 .wi-parcel__button:hover,.wi-parcel__button:focus{background:#0b559f;color:#fff !important}
-.wi-parcel__form{margin-top:14px;display:grid;gap:10px}.wi-parcel__field{display:grid;gap:4px;font-size:13px;color:#4a515c}.wi-parcel__field input{padding:10px 12px;border:1px solid #c9cfd8;border-radius:5px;font:inherit;background:#fff}.wi-parcel__field input:focus{outline:2px solid #0f6fd1;outline-offset:1px}.wi-parcel__status{margin:0;font-size:13px;font-weight:600}.wi-parcel__status--ok{color:#1a7f37}.wi-parcel__status--erro{color:#b42318}
+.wi-parcel__formhint{margin:0;font-size:13px;color:#4a515c}.wi-parcel__form{margin-top:14px;display:grid;gap:10px}.wi-parcel__field{display:grid;gap:4px;font-size:13px;color:#4a515c}.wi-parcel__field input{padding:10px 12px;border:1px solid #c9cfd8;border-radius:5px;font:inherit;background:#fff}.wi-parcel__field input:focus{outline:2px solid #0f6fd1;outline-offset:1px}.wi-parcel__status{margin:0;font-size:13px;font-weight:600}.wi-parcel__status--ok{color:#1a7f37}.wi-parcel__status--erro{color:#b42318}
 .wi-parcel__fallback{margin:10px 0 0;font-size:13px;color:#4a515c}
 .wi-parcel__email{font-weight:600;color:#0f6fd1;white-space:nowrap;cursor:pointer;border:0;background:none;padding:0;font:inherit;text-decoration:underline}
 .wi-parcel-preview{border:2px dashed #b8863b;background:#fffaf0;border-radius:6px;padding:12px 14px;margin:14px 0}
@@ -695,15 +695,50 @@ function wi_parcel_print_helper_script(): void {
 		document.head.appendChild( s );
 	};
 
+	// Lê o que o cliente já digitou no checkout, para não pedir duas vezes.
+	// Os nomes de campo são os do WooCommerce mais os do plugin brasileiro;
+	// cada um é opcional, e o formulário só aparece com o que faltar.
+	window.wiParcelPickCheckout = function () {
+		var pega = function ( ids ) {
+			for ( var i = 0; i < ids.length; i++ ) {
+				var el = document.getElementById( ids[ i ] );
+				if ( el && el.value && el.value.trim() ) { return el.value.trim(); }
+			}
+			return '';
+		};
+
+		var nome = pega( [ 'billing_first_name' ] );
+		var sobr = pega( [ 'billing_last_name' ] );
+
+		return {
+			nome: ( nome + ' ' + sobr ).trim(),
+			telefone: pega( [ 'billing_cellphone', 'billing_phone' ] ),
+			email: pega( [ 'billing_email' ] )
+		};
+	};
+
 	window.wiParcelToggleForm = function ( btn ) {
 		var box = btn.parentNode.querySelector( '.wi-parcel__form' );
 		if ( ! box ) { return; }
+
 		box.hidden = ! box.hidden;
-		if ( ! box.hidden ) {
-			var first = box.querySelector( 'input' );
-			if ( first ) { first.focus(); }
-		}
+		if ( box.hidden ) { return; }
+
+		var dados = window.wiParcelPickCheckout();
+		var campo = function ( n ) { return box.querySelector( '[name="' + n + '"]' ); };
+
+		if ( dados.nome && ! campo( 'nome' ).value ) { campo( 'nome' ).value = dados.nome; }
+		if ( dados.telefone && ! campo( 'telefone' ).value ) { campo( 'telefone' ).value = dados.telefone; }
+		if ( dados.email ) { campo( 'email' ).value = dados.email; }
+
+		var falta = box.querySelector( 'input[required]:not([value]), input[required]' );
+		var vazio = null;
+		box.querySelectorAll( 'input[required]' ).forEach( function ( i ) {
+			if ( ! vazio && ! i.value.trim() ) { vazio = i; }
+		} );
+		if ( vazio ) { vazio.focus(); }
 	};
+
 
 	window.wiParcelSend = function ( btn ) {
 		var box    = btn.closest( '.wi-parcel__form' );
@@ -809,12 +844,14 @@ function wi_parcel_render_form(): string {
 	$total = wi_parcel_cart_total_text();
 
 	$html  = '<div class="wi-parcel__form" hidden>';
+	$html .= '<p class="wi-parcel__formhint">' .
+		esc_html__( 'Vamos usar os dados que você já preencheu acima. Confira e envie:', 'wi-checkout-customizations' ) .
+		'</p>';
 	$html .= '<label class="wi-parcel__field"><span>' . esc_html__( 'Seu nome', 'wi-checkout-customizations' ) . '</span>';
 	$html .= '<input type="text" name="nome" autocomplete="name" required></label>';
 	$html .= '<label class="wi-parcel__field"><span>' . esc_html__( 'Telefone / WhatsApp', 'wi-checkout-customizations' ) . '</span>';
 	$html .= '<input type="tel" name="telefone" autocomplete="tel" required></label>';
-	$html .= '<label class="wi-parcel__field"><span>' . esc_html__( 'Número do pedido (se já tiver)', 'wi-checkout-customizations' ) . '</span>';
-	$html .= '<input type="text" name="pedido" inputmode="numeric"></label>';
+	$html .= '<input type="hidden" name="email" value="">';
 	$html .= '<input type="hidden" name="valor" value="' . esc_attr( $total ) . '">';
 	$html .= '<button type="button" class="wi-parcel__button wi-parcel__send" onclick="wiParcelSend(this);">' .
 		esc_html__( 'Enviar pedido de ajuda', 'wi-checkout-customizations' ) . '</button>';
@@ -844,6 +881,7 @@ function wi_parcel_handle_send(): void {
 	$telefone = isset( $_POST['telefone'] ) ? sanitize_text_field( wp_unslash( $_POST['telefone'] ) ) : '';
 	$pedido   = isset( $_POST['pedido'] ) ? sanitize_text_field( wp_unslash( $_POST['pedido'] ) ) : '';
 	$valor    = isset( $_POST['valor'] ) ? sanitize_text_field( wp_unslash( $_POST['valor'] ) ) : '';
+	$email    = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
 
 	if ( '' === $nome || '' === $telefone ) {
 		wp_send_json_error( array( 'message' => __( 'Preencha nome e telefone.', 'wi-checkout-customizations' ) ) );
@@ -856,6 +894,9 @@ function wi_parcel_handle_send(): void {
 		sprintf( 'Telefone: %s', $telefone ),
 	);
 
+	if ( '' !== $email ) {
+		$linhas[] = sprintf( 'E-mail: %s', $email );
+	}
 	if ( '' !== $pedido ) {
 		$linhas[] = sprintf( 'Pedido: %s', $pedido );
 	}
