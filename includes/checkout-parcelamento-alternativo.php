@@ -457,7 +457,7 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 		// protection put there on purpose.
 		$html .= '<div class="wi-parcel__actions">';
 		$html .= '<button type="button" class="wi-parcel__button" onclick="wiParcelToggleForm(this);">' .
-			esc_html__( 'Pedir ajuda para concluir a compra', 'wi-checkout-customizations' ) . '</button>';
+			esc_html__( 'Falar com o Pós-Venda por e-mail', 'wi-checkout-customizations' ) . '</button>';
 		$html .= wi_parcel_render_form();
 		$html .= '<button type="button" class="wi-parcel__button wi-parcel__button--alt" onclick="' .
 			'wiParcelOpenChat(this);' .
@@ -475,7 +475,7 @@ function wi_parcel_render_block( string $variant = 'payment' ): string {
 			'">' . esc_html__( 'Falar com a gente agora', 'wi-checkout-customizations' ) . '</button>';
 	} else {
 		$html .= '<button type="button" class="wi-parcel__button" onclick="wiParcelToggleForm(this);">' .
-			esc_html__( 'Pedir ajuda para concluir a compra', 'wi-checkout-customizations' ) . '</button>';
+			esc_html__( 'Falar com o Pós-Venda por e-mail', 'wi-checkout-customizations' ) . '</button>';
 		$html .= wi_parcel_render_form();
 	}
 
