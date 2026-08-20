@@ -41,7 +41,12 @@ add_action( 'wp_enqueue_scripts', function () {
 	// Same gate the theme itself checks before drawing the button
 	// (woodmart_login_form(), template-tags.php) — keeps this dormant if the
 	// social-login add-on isn't active or Google isn't configured.
-	if ( ! class_exists( 'WOODMART_Auth', false ) || ! function_exists( 'woodmart_get_opt' ) ) {
+	// A classe e namespaced: woodmart-core/inc/class-auth.php declara
+	// `namespace WOODMART_CORE\Inc;` e `class Auth`. Nao ha class_alias.
+	// A versao anterior checava 'WOODMART_Auth', que nao existe, entao a
+	// condicao nunca passava e o botao nunca era desenhado. Verificado no
+	// codigo de producao em 20/08/2026.
+	if ( ! class_exists( 'WOODMART_CORE\Inc\Auth', false ) || ! function_exists( 'woodmart_get_opt' ) ) {
 		return;
 	}
 
