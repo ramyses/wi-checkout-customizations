@@ -187,3 +187,69 @@
 		init();
 	}
 })();
+
+(function () {
+	'use strict';
+
+	// Elementor Pro's checkout widget draws its own login form from scratch
+	// (.e-woocommerce-login-anchor) instead of reusing WooCommerce's own
+	// login template, so none of the hooks Woodmart uses to add its Google
+	// button fire here — see includes/checkout-google-login.php for the
+	// full explanation and for where the URL below comes from. Inserted
+	// below the "Entrar" button, same relative spot the theme itself uses
+	// in its own login form.
+
+	function insertGoogleLogin() {
+		var anchor = document.querySelector( '.e-woocommerce-login-anchor' );
+		if ( ! anchor || anchor.querySelector( '.wd-social-login' ) ) {
+			return;
+		}
+
+		var dataEl = document.getElementById( 'wi-checkout-google-login-data' );
+		if ( ! dataEl ) {
+			return;
+		}
+
+		var data;
+		try {
+			data = JSON.parse( dataEl.textContent );
+		} catch ( e ) {
+			return;
+		}
+		if ( ! data || ! data.url ) {
+			return;
+		}
+
+		var divider = document.createElement( 'p' );
+		divider.className = 'title wd-login-divider';
+		var dividerLabel = document.createElement( 'span' );
+		dividerLabel.textContent = 'Ou entre com';
+		divider.appendChild( dividerLabel );
+
+		var wrap = document.createElement( 'div' );
+		wrap.className = 'wd-social-login';
+		var link = document.createElement( 'a' );
+		link.className = 'login-goo-link btn';
+		link.href = data.url;
+		link.textContent = 'Google';
+		wrap.appendChild( link );
+
+		anchor.appendChild( divider );
+		anchor.appendChild( wrap );
+	}
+
+	function init() {
+		insertGoogleLogin();
+		if ( window.jQuery ) {
+			// Re-run after checkout AJAX refreshes, in case the login
+			// section gets re-rendered without the button.
+			jQuery( document.body ).on( 'updated_checkout', insertGoogleLogin );
+		}
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', init );
+	} else {
+		init();
+	}
+})();
